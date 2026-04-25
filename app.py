@@ -13,7 +13,7 @@ from pages_modules import (
 )
 from utils.session import init_session
 from utils.theme import inject_global_css
-from utils.supabase_client import sign_out  # ✅ FIXED
+from database import supabase  # ✅ needed for logout
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -72,16 +72,18 @@ with st.sidebar:
         st.session_state.current_page = "dashboard"
 
     for label, key in pages.items():
+        active_class = "nav-btn-active" if st.session_state.current_page == key else "nav-btn"
+
         if st.button(label, key=f"nav_{key}", use_container_width=True):
             st.session_state.current_page = key
             st.rerun()
 
     st.markdown("<div class='sidebar-spacer'></div>", unsafe_allow_html=True)
 
-    # ✅ FIXED LOGOUT (IMPORTANT)
+    # ✅ Proper logout (IMPORTANT FIX)
     if st.button("🚪 Sign Out", use_container_width=True, key="signout"):
         try:
-            sign_out()  # 🔥 logs out from Supabase properly
+            supabase.auth.sign_out()  # 🔥 critical fix
         except Exception:
             pass
         st.session_state.clear()
@@ -90,9 +92,10 @@ with st.sidebar:
 # ── Render Active Page ───────────────────────────────────────────────────────
 page = st.session_state.get("current_page", "dashboard")
 
+# Optional: Page Title
 st.title(page.replace("_", " ").title())
 
-# ✅ Error boundary (prevents crash)
+# ✅ Error boundary (prevents full app crash)
 try:
     if page == "dashboard":
         dashboard_page.render()
