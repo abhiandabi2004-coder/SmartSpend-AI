@@ -4,22 +4,18 @@ Main entry point — handles routing between pages
 """
 
 import streamlit as st
+from pages_modules import (
+    auth_page,
+    dashboard_page,
+    add_expense_page,
+    expenses_page,
+    ai_advisor_page,
+)
+from utils.session import init_session
+from utils.theme import inject_global_css
+from utils.supabase_client import sign_out  # ✅ FIXED
 
-# ✅ FIXED IMPORTS (IMPORTANT)
-import pages_modules.auth_page as auth_page
-import pages_modules.dashboard_page as dashboard_page
-import pages_modules.add_expense_page as add_expense_page
-import pages_modules.expenses_page as expenses_page
-import pages_modules.ai_advisor as ai_advisor_page  # 🔥 FIXED
-
-# utils
-import utils.session as session
-import utils.theme as theme
-
-from database import supabase  # for logout
-
-
-# ── Page config ───────────────────────────────────────
+# ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="SpendSmart AI",
     page_icon="💸",
@@ -27,23 +23,19 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ✅ FIXED FUNCTION CALLS
-theme.inject_global_css()
-session.init_session()
+inject_global_css()
+init_session()
 
-
-# ── Session Safety Check ──────────────────────────────
+# ── Session Safety Check ─────────────────────────────────────────────────────
 if "user" not in st.session_state or st.session_state.user is None:
     st.session_state.user = None
 
-
-# ── Route based on auth state ─────────────────────────
+# ── Route based on auth state ─────────────────────────────────────────────────
 if not st.session_state.user:
     auth_page.render()
     st.stop()
 
-
-# ── Sidebar Navigation ────────────────────────────────
+# ── Sidebar Navigation ───────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div class="sidebar-brand">
@@ -53,8 +45,8 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+    # ✅ Safe user handling
     user = st.session_state.user
-
     user_email = (
         user["email"] if isinstance(user, dict)
         else getattr(user, "email", "User")
@@ -86,34 +78,30 @@ with st.sidebar:
 
     st.markdown("<div class='sidebar-spacer'></div>", unsafe_allow_html=True)
 
-    # ── Logout ───────────────────────────────────────
-    if st.button("🚪 Sign Out", use_container_width=True):
+    # ✅ FIXED LOGOUT (IMPORTANT)
+    if st.button("🚪 Sign Out", use_container_width=True, key="signout"):
         try:
-            supabase.auth.sign_out()
-        except:
+            sign_out()  # 🔥 logs out from Supabase properly
+        except Exception:
             pass
         st.session_state.clear()
         st.rerun()
 
-
-# ── Render Active Page ───────────────────────────────
+# ── Render Active Page ───────────────────────────────────────────────────────
 page = st.session_state.get("current_page", "dashboard")
 
 st.title(page.replace("_", " ").title())
 
+# ✅ Error boundary (prevents crash)
 try:
     if page == "dashboard":
         dashboard_page.render()
-
     elif page == "add_expense":
         add_expense_page.render()
-
     elif page == "expenses":
         expenses_page.render()
-
     elif page == "ai_advisor":
         ai_advisor_page.render()
-
     else:
         st.error("Page not found")
 
