@@ -5,18 +5,19 @@ Main entry point — handles routing between pages
 
 import streamlit as st
 
-# ✅ FIXED IMPORTS (VERY IMPORTANT)
+# ✅ FIXED IMPORTS (IMPORTANT)
 import pages_modules.auth_page as auth_page
 import pages_modules.dashboard_page as dashboard_page
 import pages_modules.add_expense_page as add_expense_page
 import pages_modules.expenses_page as expenses_page
-import pages_modules.ai_advisor_page as ai_advisor_page
+import pages_modules.ai_advisor as ai_advisor_page  # 🔥 FIXED
 
 # utils
 import utils.session as session
 import utils.theme as theme
 
-from database import supabase  # keep if working
+from database import supabase  # for logout
+
 
 # ── Page config ───────────────────────────────────────
 st.set_page_config(
@@ -30,16 +31,19 @@ st.set_page_config(
 theme.inject_global_css()
 session.init_session()
 
+
 # ── Session Safety Check ──────────────────────────────
 if "user" not in st.session_state or st.session_state.user is None:
     st.session_state.user = None
+
 
 # ── Route based on auth state ─────────────────────────
 if not st.session_state.user:
     auth_page.render()
     st.stop()
 
-# ── Sidebar ───────────────────────────────────────────
+
+# ── Sidebar Navigation ────────────────────────────────
 with st.sidebar:
     st.markdown("""
     <div class="sidebar-brand">
@@ -50,6 +54,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     user = st.session_state.user
+
     user_email = (
         user["email"] if isinstance(user, dict)
         else getattr(user, "email", "User")
@@ -79,7 +84,9 @@ with st.sidebar:
             st.session_state.current_page = key
             st.rerun()
 
-    # Logout
+    st.markdown("<div class='sidebar-spacer'></div>", unsafe_allow_html=True)
+
+    # ── Logout ───────────────────────────────────────
     if st.button("🚪 Sign Out", use_container_width=True):
         try:
             supabase.auth.sign_out()
@@ -88,7 +95,8 @@ with st.sidebar:
         st.session_state.clear()
         st.rerun()
 
-# ── Render Page ───────────────────────────────────────
+
+# ── Render Active Page ───────────────────────────────
 page = st.session_state.get("current_page", "dashboard")
 
 st.title(page.replace("_", " ").title())
@@ -96,12 +104,16 @@ st.title(page.replace("_", " ").title())
 try:
     if page == "dashboard":
         dashboard_page.render()
+
     elif page == "add_expense":
         add_expense_page.render()
+
     elif page == "expenses":
         expenses_page.render()
+
     elif page == "ai_advisor":
         ai_advisor_page.render()
+
     else:
         st.error("Page not found")
 
